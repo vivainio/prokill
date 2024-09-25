@@ -1,7 +1,10 @@
 import itertools
+import re
 import shlex
 from argparse import ArgumentParser
 from dataclasses import dataclass
+import shutil
+import subprocess
 
 import wmi
 
@@ -74,5 +77,57 @@ def print_process_tree():
     return "\n".join(lines)
 
 
+def parse_pids_from_output(output: str):
+    pids = []
+    for line in output.split("\n"):
+        if not line:
+            continue
+
+        m = re.search(r"  (\d+) ", line)
+        if m:
+            pids.append(m.group(1))
+            continue
+
+        m = re.search(r"\[(\d+)\]", line)
+        if m:
+            pids.append(m.group(1))
+
+    return pids
+
+
+def kill_selected_processes():
+    tree = print_process_tree()
+    fzf_bin = shutil.which("fzf")
+    if not fzf_bin:
+        print(
+            "fzf not found, printing process tree instead. "
+            "Install it with: 'winget install fzf'"
+        )
+        print(tree)
+        return
+
+    fzf = subprocess.run(
+        [
+            fzf_bin,
+            "--multi",
+            "--no-sort",
+            "--tac",
+        ],
+        input=tree,
+        text=True,
+        capture_output=True,
+    )
+    if fzf.returncode != 0:
+        print("No process selected. Exiting.")
+        return
+
+    print("Proceeding kill of:")
+    print(fzf.stdout)
+    pids = parse_pids_from_output(fzf.stdout)
+    for pid in pids:
+        subprocess.run(["taskkill", "/F", "/PID", pid])
+
+
 def main():
-    print(print_process_tree())
+    kill_selected_processes()
+    # print(print_process_tree())

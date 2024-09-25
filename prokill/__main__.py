@@ -1,3 +1,5 @@
-from .prokill import main
+from . import prokill
 
-main()
+
+def main():
+    prokill.main()
