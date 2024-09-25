@@ -38,6 +38,8 @@ BLACKLIST = [
     "msedgewebview2.exe",
     "RuntimeBroker.exe",
     "msedge.exe",
+    'chrome.exe',
+    "ms-teams.exe",
 ]
 
 
@@ -127,7 +129,16 @@ def kill_selected_processes():
     for pid in pids:
         subprocess.run(["taskkill", "/F", "/PID", pid])
 
-
 def main():
-    kill_selected_processes()
-    # print(print_process_tree())
+    parser = ArgumentParser(description="Process killer")
+    parser.add_argument(
+        "--list",
+        "-l",
+        action="store_true",
+        help="Print process tree",
+    )
+    args = parser.parse_args()
+    if args.list:
+        print(print_process_tree())
+    else:
+        kill_selected_processes()
