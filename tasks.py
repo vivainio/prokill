@@ -24,7 +24,7 @@ def clean() -> None:
 def do_publish(args) -> None:
     clean()
     c("python -m build")
-    c("twine upload --repository prokill dist/*")
+    c("twine upload dist/*")
 
 
 def default() -> None:
