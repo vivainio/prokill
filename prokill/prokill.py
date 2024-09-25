@@ -8,9 +8,6 @@ import wmi
 # Initializing the wmi constructor
 f = wmi.WMI()
 
-# Printing the header for the later columns
-print("pid Process name")
-
 
 @dataclass
 class ProcInfo:
@@ -79,7 +76,3 @@ def print_process_tree():
 
 def main():
     print(print_process_tree())
-
-
-if __name__ == "__main__":
-    main()
