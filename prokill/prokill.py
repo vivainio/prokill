@@ -63,7 +63,7 @@ def print_process_tree():
         lines.append(s)
 
     all = list(get_processes())
-    all.sort(key=lambda p: (p.name, p.args))
+    all.sort(key=lambda p: (p.name.lower(), p.args))
     all = itertools.groupby(all, key=lambda p: (p.name))
     for k, v in all:
         aslist = list(v)
