@@ -1,10 +1,10 @@
 import itertools
 import re
 import shlex
-from argparse import ArgumentParser
-from dataclasses import dataclass
 import shutil
 import subprocess
+from argparse import ArgumentParser
+from dataclasses import dataclass
 
 import wmi
 
@@ -38,7 +38,7 @@ BLACKLIST = [
     "msedgewebview2.exe",
     "RuntimeBroker.exe",
     "msedge.exe",
-    'chrome.exe',
+    "chrome.exe",
     "ms-teams.exe",
 ]
 
@@ -47,24 +47,27 @@ def is_blacklist(p: ProcInfo) -> bool:
     return p.name in BLACKLIST
 
 
-def get_processes():
+def get_processes(args: ArgumentParser):
     # Iterating through all the running processes
     for process in f.Win32_Process():
         cmdline = process.CommandLine
         p = ProcInfo(process.ProcessId, process.Name, args=cmdline if cmdline else "")
         if is_blacklist(p):
             continue
-        p.args = simplify_args(p)
+        if not args.raw:
+            p.args = simplify_args(p)
+        if args.search and not re.search(args.search, p.args, re.IGNORECASE):
+            continue
         yield p
 
 
-def print_process_tree():
+def print_process_tree(args: ArgumentParser):
     lines = []
 
     def emit(s: str):
         lines.append(s)
 
-    all = list(get_processes())
+    all = list(get_processes(args))
     all.sort(key=lambda p: (p.name.lower(), p.args))
     all = itertools.groupby(all, key=lambda p: (p.name))
     for k, v in all:
@@ -127,7 +130,11 @@ def kill_selected_processes():
     print(fzf.stdout)
     pids = parse_pids_from_output(fzf.stdout)
     for pid in pids:
-        subprocess.run(["taskkill", "/F", "/PID", pid])
+        subprocess.run(["taskkill", "/F", "/PID", pid], check=False)
+
+
+def kill_searched_processes(search: str): ...
+
 
 def main():
     parser = ArgumentParser(description="Process killer")
@@ -137,8 +144,14 @@ def main():
         action="store_true",
         help="Print process tree",
     )
+    parser.add_argument("--search", help="Regex to search in process argument list")
+    parser.add_argument(
+        "--raw", action="store_true", help="Raw arguments, do not try to simplify"
+    )
     args = parser.parse_args()
     if args.list:
-        print(print_process_tree())
+        print(print_process_tree(args))
+    elif args.search:
+        kill_searched_processes(args.search)
     else:
         kill_selected_processes()
