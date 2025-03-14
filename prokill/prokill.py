@@ -3,10 +3,11 @@ import re
 import shlex
 import shutil
 import subprocess
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
 
 import wmi
+import contextlib
 
 # Initializing the wmi constructor
 f = wmi.WMI()
@@ -47,7 +48,7 @@ def is_blacklist(p: ProcInfo) -> bool:
     return p.name in BLACKLIST
 
 
-def get_processes(args: ArgumentParser):
+def get_processes(args: Namespace):
     # Iterating through all the running processes
     for process in f.Win32_Process():
         cmdline = process.CommandLine
@@ -55,7 +56,8 @@ def get_processes(args: ArgumentParser):
         if is_blacklist(p):
             continue
         if not args.raw:
-            p.args = simplify_args(p)
+            with contextlib.suppress(ValueError):
+                p.args = simplify_args(p)
         if args.search and not re.search(args.search, p.args, re.IGNORECASE):
             continue
         yield p
@@ -100,8 +102,8 @@ def parse_pids_from_output(output: str):
     return pids
 
 
-def kill_selected_processes():
-    tree = print_process_tree()
+def kill_selected_processes(args):
+    tree = print_process_tree(args)
     fzf_bin = shutil.which("fzf")
     if not fzf_bin:
         print(
@@ -154,4 +156,4 @@ def main():
     elif args.search:
         kill_searched_processes(args.search)
     else:
-        kill_selected_processes()
+        kill_selected_processes(args)

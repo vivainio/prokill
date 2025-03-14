@@ -40,7 +40,6 @@ def nuke(dirs: list[str]) -> None:
             shutil.rmtree(pth)
 
 
-
 def c_spawn(cmd, cwd):
     print(">", cmd)
     subprocess.Popen(cmd, cwd=cwd, shell=True)
