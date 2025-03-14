@@ -13,7 +13,7 @@ def do_format(args) -> None:
     c("ruff format .")
 
 
-def do_4test(args) -> None:
+def do_test(args) -> None:
     c("py -m pytest")
 
 
