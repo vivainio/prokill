@@ -1,4 +1,6 @@
+import contextlib
 import itertools
+import json
 import re
 import shlex
 import shutil
@@ -7,7 +9,6 @@ from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
 
 import wmi
-import contextlib
 
 # Initializing the wmi constructor
 f = wmi.WMI()
@@ -40,7 +41,10 @@ BLACKLIST = [
     "RuntimeBroker.exe",
     "msedge.exe",
     "chrome.exe",
+    "firefox.exe",
+    "explorer.exe",
     "ms-teams.exe",
+    "OUTLOOK.EXE",
 ]
 
 
@@ -58,12 +62,14 @@ def get_processes(args: Namespace):
         if not args.raw:
             with contextlib.suppress(ValueError):
                 p.args = simplify_args(p)
+        if "prokill" in p.args:
+            continue
         if args.search and not re.search(args.search, p.args, re.IGNORECASE):
             continue
         yield p
 
 
-def print_process_tree(args: ArgumentParser):
+def print_process_tree(args: Namespace):
     lines = []
 
     def emit(s: str):
@@ -135,7 +141,16 @@ def kill_selected_processes(args):
         subprocess.run(["taskkill", "/F", "/PID", pid], check=False)
 
 
-def kill_searched_processes(search: str): ...
+def kill_searched_processes(search: str):
+    all = list(get_processes(Namespace(raw=True, search=search)))
+    for p in all:
+        print(f"Killing {p.id} {p.name} {p.args}")
+        # subprocess.run(["taskkill", "/F", "/PID", str(p.id)], check=False)
+
+
+def print_json_list():
+    procs = list(get_processes(Namespace(raw=True, search=None)))
+    print(json.dumps([p.__dict__ for p in procs], indent=2))
 
 
 def main():
@@ -146,14 +161,27 @@ def main():
         action="store_true",
         help="Print process tree",
     )
+    parser.add_argument("--json", action="store_true", help="Output in JSON format")
     parser.add_argument("--search", help="Regex to search in process argument list")
     parser.add_argument(
         "--raw", action="store_true", help="Raw arguments, do not try to simplify"
     )
+    parser.add_argument(
+        "--killall",
+        action="store_true",
+        help="Kill all processes without selection (have to use search)",
+    )
     args = parser.parse_args()
+    print(args)
     if args.list:
-        print(print_process_tree(args))
-    elif args.search:
+        if args.json:
+            print_json_list()
+        else:
+            print(print_process_tree(args))
+    elif args.killall:
+        if not args.search:
+            print("You have to provide a search string to kill all processes")
+            return
         kill_searched_processes(args.search)
     else:
         kill_selected_processes(args)
